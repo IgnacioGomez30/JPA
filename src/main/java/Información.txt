@@ -1,0 +1,167 @@
+
+--- JAVA PERSISTENCE API ---
+JPA es una especificación de Java que proporciona un marco para la gestión de persistencia de datos en aplicaciones Java.
+Permite a los desarrolladores interactuar con bases de datos utilizando objetos, facilitando el mapeo entre clases de Java
+y tablas de bases de datos, conocido como mapeo objeto-relacional (ORM).
+Hibernate por otro lado, es una implementación de JPA.
+
+--- JACKSON DATABIND ---
+Es una biblioteca popular para el procesamiento de datos, permitiendo la serialización y deserialización de objetos Java
+a JSON y viceversa. El formato basado en texto JSON (JavaScript Object Notation) es un formato de intercambio de datos
+ligero y fácil de leer para los seres humanos, además de ser fácil de procesar y generar por las máquinas. Es ampliamente
+utilizado para transmitir datos entre un servidor y una aplicación web.
+
+→ Convertir un objeto Java a JSON
+    ObjectMapper objectMapper = new ObjectMapper();
+    String json = objectMapper.writeValueAsString(miObjeto);
+
+→ Convertir JSON en un objeto Java
+    ObjectMapper objectMapper = new ObjectMapper();
+    MiClase objeto = objectMapper.readValue(json, MiClase.class);
+__________________________________________________________________________________________________________________________________________
+
+Las clases deben implemetar la interfaz 'Serializable'. El campo serialVersionUID actúa como un identificador de versión de la clase,
+el cual debe ser único para cada clase. Se debe definir de la siguiente manera:
+    private static final long serialVersionUID = 1L;
+
+SERIALIZACIÓN
+    FileOutputStream fileOut = new FileOutputStream("producto.ser");
+    ObjectOutputStream out = new ObjectOutputStream(fileOut);
+    out.writeObject(producto);
+    out.close();
+    fileOut.close();
+
+DESERIALIZACIÓN
+    FileInputStream fileIn = new FileInputStream("producto.ser");
+    ObjectInputStream in = new ObjectInputStream(fileIn);
+    Producto producto = (Producto) in.readObject();
+    in.close();
+    fileIn.close();
+__________________________________________________________________________________________________________________________________________
+
+--- EntityManagerFactory ---
+Es responsable de crear instancias de EntityManager, que es la clase encargadad de gestionar las operaciones de persistencia
+y consulta en la base de datos.
+
+ .Se debe crear una sola instancia de EntityManagerFactory por base de datos y mantenerla viva durante toda la ejecución
+ .Puede ser compartida entre varios hilos sin problema (Thread-safe)
+ .Se debe cerrar el objeto EntityManagerFactory cuando ya no sea necesario
+
+--- EntityManager ---
+Es el encargado de las operaciones de persistencia sobre las entidades. Es la interfaz principal que se utiliza para
+interactuar con la base de datos en aplicaciones que usan JPA. Es generalmente de corta duración y debe ser creado cada
+vez que se necesita interactuar con la base de datos. Después de realizar la operación, el EntityManager debe ser cerrado
+para liberar los recursos que utiliza.
+
+→ MÉTODOS
+    persist(Object entity):                            Persiste una entidad nueva en la base de datos
+    find(Class<T> entityClass, Object primaryKey):     Busca una entidad por su clave primaria en la tabla correspondiente de la base de datos
+    remove(Object entity):                             Elimina una entidad de la base de datos
+    createNativeQuery(String sql):                     Crea una consulta SQL
+    flush():                                           Refleja en la base de datos los cambios hechos hasta el momento dentro de la transacción
+    clear():                                           Limpia el contexto de persistencia del EntityManager, todas las entidades que están siendo
+                                                       gestionadas por ese EntityManager son desvinculadas
+    merge(Object entity):                              Sincroniza una entidad con un objeto de tipo EntityManager, y si la entidad fue modificada
+                                                       fuera del contexto de persistencia, actualiza su estado
+
+    getTrasnsaction():                                 Devuelve la transacción asosciada al EntityManager
+        getTransaction().begin()
+        getTransaction().commit()
+        getTransaction().rollback()
+
+--- Query ---
+Es utilizada para definir y ejecutar consultas sobre entidades en la base de datos.
+Devuelve los resultados en tipo Object, lo que significa, que luego deben ser debe realizar un casting al tipo apropiado.
+
+--- TypedQuery ---
+Permite especificar el tipo de entidad que se espera devolver.
+
+→ MÉTODOS
+    getResultList():                                   Ejecuta la consulta y obtiene una lista de objetos del tipo especificado en la instancia
+    getSingleResult():                                 Igual que el método anterior, pero devuelve solamente un objeto del tipo especificado
+    executeUpdate():                                   Es utilizado para ejecutar actualizaciones o eliminaciones en la base de datos,
+                                                       devolviendo el número de filas afectadas
+    setParameter():                                    Establece parámetros en la consulta, pueden ser nombrados o posicionales
+
+* Parámetros Nombrados *
+Los parámetros nombrados se especifican en la consulta utilizando el símbolo ':' seguido del nombre del parámetro.
+
+    String sql = "SELECT * FROM articulo WHERE precio > :precioMinimo";
+    Query query = entityManager.createNativeQuery(sql, Articulo.class);
+    query.setParameter("precioMinimo", 100.0);
+
+* Parámetros Posicionales *
+Los parámetros posicionales se especifican en la consulta usando el símbolo '?'. Dentro del método, el primer número indica su posición
+en la consutla (empezando desde 1), seguido del valor del parámetro.
+
+    String sql = "SELECT * FROM articulo WHERE precio > ?";
+    Query query = entityManager.createNativeQuery(sql, Articulo.class);
+    query.setParameter(1, 100.0);
+__________________________________________________________________________________________________________________________________________
+
+→ ESTAODS DE ENTIDADES
+Nuevo (Transient):
+    La entidad no está vinculada a un EntityManager y no existe en la base de datos, solo fuera del contexto de persistencia
+
+Administrado (Managed):
+    La entidad está asociada a un EntityManeger, cualquier cambio en el estado de la entidad se sincroniza automáticamente
+    con la base de datos al hacer un commit().
+
+Separado (Detached):
+    La entidad no está siendo gestionada por un EntityManager (fuera del contexto de persistencia).
+
+Eliminado (Removed):
+    La entidad está marcada para ser eliminada de la base de datos. Aún es gestionda por el EntityManager, pero al hacer
+    commit(), la entidad será eliminada.
+__________________________________________________________________________________________________________________________________________
+
+* ETIQUETAS *
+
+@Entity:       Marca una clase como una entidad que JPA debe persistir
+@Table:        Permite personalizar el mapeo entre la clase y la tabla el la base de datos
+@Column:       Permite personalizar el mapeo de un campo de una entidad a una columna en la tabla de la BD
+@JoinColumn:   Especifica la columna que actúa como clave foránea para establecer una relación entre dos entidades
+@Id:           Indica cual es el campo corresponsiente a una clave primaria de una entidad
+
+@GeneratedValue(strategy = GenerationType.IDENTITY):
+    Indica que el valor de la clave primaria será generado automáticamente por la base de datos (autoincremental).
+
+
+El concepto de ENTIDAD PROPIETARIA DE LA RELACIÓN se refiere a la entidad que es responsable de la gestión de la relación en el
+contexto de la base de datos. Esto incluye el control de las claves foráneas y la persistencia de las entidades asociadas.
+Aunque puede haber bidireccionalidad en el diseño de clases, la base de datos solo puede gestionar relaciones a través de claves
+foráneas, y solo una entidad puede ser responsable de manejar esa relación, lo que asegura la integridad y eficiencia en la gestión de datos.
+
+* RELACIONES *
+Las relaciones es JPA permiten definir cómo las entidades están conectadas entre sí.
+
+@OneToOne
+@OneToMany
+@ManyToOne
+@ManyToMany
+
+'cascade'
+El cascadeo en JPA se refiere a la capacidad de propagar ciertas operaciones (como persistir, actualizar o eliminar)
+desde una entidad principal a sus entidades relacionadas. Esto permite manejar automáticamente las relaciones entre
+entidades sin necesidad de realizar operaciones explícitas en cada una de ellas.
+
+'mappedBy'
+La propiedad mappedBy se utiliza en JPA para definir la parte no propietaria de una relación bidireccional entre entidades.
+Específicamente, indica que una relación es gestionada por el otro lado de la asociación.
+
+'orphanRemoval'
+La propiedad orphanRemoval se utiliza para garantizar que las entidades "hijas" (dentro de una relación de composición)
+sean eliminadas automáticamente si son desvinculadas o removidas de la relación con su entidad "padre".
+
+<<< En el caso de las relaciones bidireccionales, dentro del código, no es necesario asignar el objeto correspondiente de la
+    clase propietaria a su clase asociada, ya que JPA se encarga de esto >>>
+
+
+
+
+
+
+
+
+
+
